@@ -3,6 +3,10 @@
 /* global p5 */
 /* exported preload, setup, draw, mouseClicked */
 
+let tile_height;
+let tile_width;
+let tile_columns;
+let tile_rows;
 let camera_velocity;
 let camera_offset;
 
