@@ -22,6 +22,8 @@ let worldSeed;
 let TYPE1_COLOR = "#FFFF00";
 let TYPE2_COLOR = "#FF00FF";
 let TYPE3_COLOR = "#00FFFF";
+let VACUOLE_COLOR = "#AA00AA";
+
 let TYPE_COLORS = [TYPE1_COLOR, TYPE2_COLOR, TYPE3_COLOR];
 let NUM_TYPES = 3;
 
@@ -44,6 +46,9 @@ let [cw, ch] = [tw, th];
 
 const padding = p3_tileWidth() / 8;
 const c_radius = p3_tileWidth() / 8;
+const wall_width = padding / 2;
+const VACUOLE_SIZE = tw / 2;
+
 
 let clicks = {};
 
@@ -194,21 +199,25 @@ function p3_drawTile(i, j) {
   //rect(x, y, w, h, ...vex_corn);
   
   
-  fill(TYPE_COLORS[c_type]);
-  if (c_type != 0) stroke(0)
-  rect(x, y, w, h, ...vex_corn);
+
   
   //rect(x*0.7, y+10, w*0.7, h*0.7, ...vex_corn);
   // beginShape();
   // for (let v of vert)
   //   vertex(...v);
   // endShape(CLOSE);
-  //stroke(0);
+  //stroke('green');
 
   //text( n_code , tw/2, th/2);
-  stroke(TYPE_COLORS[c_type]);
+  
   if (c_type != 0){
-    for (let n = 0; n < 4; n++){ 
+    fill(TYPE_COLORS[c_type]);
+    
+    stroke('green');
+    rect(x, y, w, h, ...vex_corn);
+
+    stroke(TYPE_COLORS[c_type]);
+    for (let n = 0; n < 4; n++){ // Cover the outline!
       if ((n_code & 1) == 1 ){
         rect(x+cv_border[n][0], 
               y+cv_border[n][1], 
@@ -217,20 +226,37 @@ function p3_drawTile(i, j) {
       }
       n_code = rightRotate(n_code, 1);
     }
+  
+    if (cave_corn[0] == 0 && (n_code & 3) == 3){
+      noStroke();
+      fill(VACUOLE_COLOR);
+      beginShape();
+      vertex(VACUOLE_SIZE*g_offset[0].di*noise(VACUOLE_SIZE, VACUOLE_SIZE), VACUOLE_SIZE*g_offset[0].dj*noise(i, j));
+      vertex(VACUOLE_SIZE*g_offset[1].di*noise(i, VACUOLE_SIZE), VACUOLE_SIZE*g_offset[1].dj*noise(VACUOLE_SIZE, j));
+      vertex(VACUOLE_SIZE*g_offset[2].di*noise(VACUOLE_SIZE, j), VACUOLE_SIZE*g_offset[2].dj*noise(i, VACUOLE_SIZE));
+      vertex(VACUOLE_SIZE*g_offset[3].di*noise(i, j), VACUOLE_SIZE*g_offset[3].dj*noise(VACUOLE_SIZE, VACUOLE_SIZE));
+      endShape(CLOSE);
+    }
+
+    fill(TYPE_COLORS[(c_type == 1) + 1]);
+    stroke(TYPE_COLORS[c_type]);
+    for (let n = 0; n < noise(i, j)*50; n++){
+      circle(noise(i+1+n*10, j-1)*(w) + x, noise(j+n*10,i+1)*(h) + y, noise(i+n*10, j)* 10);
+
+    }
 
     for (let n = 0; n < 4; n++){ 
       if (cave_corn[n] > 0){ // draw the concave corners
         //rect(corners[n].di, corners[n].dj, padding, padding, ...rad[n]);
         
-        stroke(0);
+        stroke('green');
         fill(TYPE_COLORS[0]);
         arc(corners[n].di, corners[n].dj, padding*2+1, padding*2+1, ...ang[n]);
       }
-
     }
   }
-    fill(0);
-    text(get_bin(n_code), tw/2, th/2);
+    //fill(0);
+   // text(get_bin(n_code), tw/2, th/2);
 
 
   let n = clicks[[i, j]] | 0;
