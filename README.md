@@ -1,4 +1,4 @@
-# Sexy Enigmatic Gooey Bacteria
+# Snuggly Enigmatic Gooey Bacteria
 
 ## Description
 Bacteria undergoing conjugation under a microscope
