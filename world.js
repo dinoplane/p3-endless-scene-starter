@@ -16,15 +16,20 @@
 
 function p3_preload() {}
 
-function p3_setup() {}
+function p3_setup() {
+  strokeCap(SQUARE);
+}
 
 let worldSeed;
-let TYPE1_COLOR = "#FFFF00";
-let TYPE2_COLOR = "#FF00FF";
-let TYPE3_COLOR = "#00FFFF";
-let VACUOLE_COLOR = "#AA00AA";
+let TYPE1_COLOR = "#251F47";
+let TYPE2_COLOR = "#FFC2F4";
+let TYPE3_COLOR = "#A9C6EF";
+let VACUOLE_COLORS = ["#78BC61", "#E9AFA3"];
+let SEL_COLORS = ["#3B3271", "#FF85E9", "#75A4E6"]
 
 let TYPE_COLORS = [TYPE1_COLOR, TYPE2_COLOR, TYPE3_COLOR];
+let BUBBLE_COLORS = ["#00E0E0","#AA00AA"];
+let WALL_COLORS = ["#069D52", "#924511"];
 let NUM_TYPES = 3;
 
 
@@ -48,6 +53,7 @@ const padding = p3_tileWidth() / 8;
 const c_radius = p3_tileWidth() / 8;
 const wall_width = padding / 2;
 const VACUOLE_SIZE = tw / 2;
+const STROKE_WEIGHT = 10;
 
 
 let clicks = {};
@@ -55,7 +61,6 @@ let clicks = {};
 function p3_tileClicked(i, j) {
   let key = [i, j];
   clicks[key] = 1 + (clicks[key] | 0);
-  console.log(i, j);
 }
 
 const INT_BITS = 4;
@@ -108,16 +113,17 @@ let g_offset =   [{di: -1, dj: -1}, // Northwest 0011
 //                  {di:  tw-padding, dj:  th-padding}, // Southeast
 //                  {di:  0,          dj:  th-padding}, // Southwest
 //                 ];
-let corners =    [{di:  -1,          dj:  -1}, // Northwest
-                  {di:  tw, dj:  -1}, // Northeast
-                  {di:  tw, dj:  th}, // Southeast
-                  {di:  -1,          dj:  th }, // Southwest
+let corners =    [{di:  -STROKE_WEIGHT/2, dj:  -STROKE_WEIGHT/2}, // Northwest
+                  {di:  tw,               dj:  -STROKE_WEIGHT/2}, // Northeast
+                  {di:  tw,               dj:  th}, // Southeast
+                  {di:  0, dj: th }, // Southwest
                   ];
 
-let cv_border =  [[ 0,  1], // West
-                  [ 1,  0], // North
-                  [tw,  1], // East
-                  [ 1, th] // South
+
+let cv_border =  [[ -STROKE_WEIGHT/2,  -STROKE_WEIGHT/2], // West
+                  [ -STROKE_WEIGHT/2,  -STROKE_WEIGHT/2], // North
+                  [ tw -3*STROKE_WEIGHT/2,  -STROKE_WEIGHT/2], // East
+                  [ -STROKE_WEIGHT/2, th-9*STROKE_WEIGHT/2-2] // South
                  ];
 
 let rad = [ [0,0,c_radius,0],
@@ -141,16 +147,146 @@ let c_type;
 let neighbors = Array(4);
 let n_code;
 
+let vert, vex_corn, cave_corn;
+let x, y, w, h;
+
 function get_type(i, j){
       //return  floor(noise(i, j)*3);
    return  floor(noise(i, j)*100) % 3;
 }
 
+function drawOutlineCover(i, j){
+  push();
+  if (selected) fill(SEL_COLORS[c_type])
+  else fill(TYPE_COLORS[c_type]);
+  noStroke();
+  for (let n = 0; n < 4; n++){ // Cover the outline!
+    if ((n_code & 1) == 1 ){
+      let tl = [vert[n], vert[(n+1) % 4]][(((n+1) % 4) < 2) +0]
+      let m, bw, bh;
+      if (n % 2){
+        m = 1;
+        bw = w-STROKE_WEIGHT;
+        bh = STROKE_WEIGHT;
+      } else {
+        m = -1;
+        bw = STROKE_WEIGHT;
+        bh = h-STROKE_WEIGHT;
+      }
+
+      rect(tl[0] + m*STROKE_WEIGHT/2, 
+        tl[1] - m*STROKE_WEIGHT/2, 
+        bw, 
+        bh);
+    } 
+    n_code = rightRotate(n_code, 1);
+    //console.log(n_code)
+  }
+  pop();
+}
+
+function drawVacuole(i, j){
+  push();
+  if (cave_corn[0] == 0 && (n_code & 3) == 3){ // Draw Vacuoles
+    strokeWeight(1);
+    stroke(VACUOLE_COLORS[!(c_type - 1)+0]);
+    fill(VACUOLE_COLORS[c_type-1]);
+    circle(0,0, 30);
+
+    beginShape();
+    curveVertex(VACUOLE_SIZE*g_offset[0].di*noise(VACUOLE_SIZE, VACUOLE_SIZE), VACUOLE_SIZE*g_offset[0].dj*noise(i, j));
+    curveVertex(VACUOLE_SIZE*g_offset[1].di*noise(i, VACUOLE_SIZE), VACUOLE_SIZE*g_offset[1].dj*noise(VACUOLE_SIZE, j));
+    curveVertex(VACUOLE_SIZE*g_offset[2].di*noise(VACUOLE_SIZE, j), VACUOLE_SIZE*g_offset[2].dj*noise(i, VACUOLE_SIZE));
+    curveVertex(VACUOLE_SIZE*g_offset[3].di*noise(i, j), VACUOLE_SIZE*g_offset[3].dj*noise(VACUOLE_SIZE, VACUOLE_SIZE));
+    curveVertex(VACUOLE_SIZE*g_offset[0].di*noise(VACUOLE_SIZE, VACUOLE_SIZE), VACUOLE_SIZE*g_offset[0].dj*noise(i, j));
+    curveVertex(VACUOLE_SIZE*g_offset[1].di*noise(i, VACUOLE_SIZE), VACUOLE_SIZE*g_offset[1].dj*noise(VACUOLE_SIZE, j));
+    curveVertex(VACUOLE_SIZE*g_offset[2].di*noise(VACUOLE_SIZE, j), VACUOLE_SIZE*g_offset[2].dj*noise(i, VACUOLE_SIZE));
+    curveVertex(VACUOLE_SIZE*g_offset[3].di*noise(i, j), VACUOLE_SIZE*g_offset[3].dj*noise(VACUOLE_SIZE, VACUOLE_SIZE));
+    endShape(CLOSE);
+  }
+  pop();
+}
+
+function drawBubbles(i, j){
+  push();
+  fill(BUBBLE_COLORS[c_type - 1]);
+  strokeWeight(1)
+  stroke(BUBBLE_COLORS[!(c_type - 1)+0]);
+  let [minX, minY] = [x+ STROKE_WEIGHT/2, y+STROKE_WEIGHT/2];
+  let [maxX, maxY] = [x+w-STROKE_WEIGHT/2, y+h-STROKE_WEIGHT/2];
+
+  for (let n = 0; n < noise(i, j)*50; n++){  
+    circle(noise(i+1+n*100, j-1)*(w - STROKE_WEIGHT*3/2 + 1) + x + STROKE_WEIGHT*3/4, 
+            noise(j+n*100, i+1)*(h - STROKE_WEIGHT*3/2 + 1) + y + STROKE_WEIGHT*3/4,
+            noise(i+n*100, j)*10);
+  }
+  pop();
+}
+
+function drawConcaveCorners(){
+  push();
+  for (let n = 0; n < 4; n++){ 
+    if (cave_corn[n] > 0){ // draw the concave corners
+      //rect(corners[n].di, corners[n].dj, padding, padding, ...rad[n]);
+      fill(WALL_COLORS[c_type-1]);
+      noStroke();
+      let arc_v = vert[(n+1) % 4];
+      arc_v[0] += g_offset[n].di * (STROKE_WEIGHT/2+1);
+      arc_v[1] += g_offset[n].dj * (STROKE_WEIGHT/2+1);
+
+      arc(...arc_v, (padding+STROKE_WEIGHT)*2+1, (padding+STROKE_WEIGHT)*2+1, ...ang[n]);
+      //stroke('green');
+      noStroke();
+      fill(TYPE_COLORS[0]);
+      arc(...arc_v, (padding)*2+2, (padding)*2+2, ...ang[n]);
+    }
+  }
+  pop();
+}
+
+const PILUS_WIDTH = 10;
+
+function drawPilus(i, j){
+  stroke(0);
+  fill(0);
+  for (let n = 0; n < 2; n++){
+    if (neighbors[n] != 0 && neighbors[n] != c_type && noise(i, j) < 0.5){
+      let m = (n < 2) ? -1 : +1;
+      
+      let start = [vert[(n+1)%4][0], vert[(n+1)%4][1]];
+      let end =  [vert[(n+1)%4][0], vert[(n+1)%4][1]];
+      //console.log(start);
+      start[n % 2] += (n < 2) ? -(padding*2+STROKE_WEIGHT/2) : (padding*2+STROKE_WEIGHT/2);   // translating point out tile
+      start[!(n % 2) + 0] = p3_tileWidth()/2;
+      end[n % 2] += m*STROKE_WEIGHT/2;
+      end[!(n % 2) + 0] = p3_tileWidth()/2;
+      //console.log(start, vert[(n+1)%4]);
+
+      stroke("purple");
+      strokeWeight(STROKE_WEIGHT)
+      line(...start,
+          ...end); 
+
+      stroke(TYPE_COLORS[floor(noise(n, n+j+99*i)*99) % 2 + 1]);
+      strokeWeight(STROKE_WEIGHT/2)
+      line(...start,
+          ...end); 
+    
+      strokeWeight(STROKE_WEIGHT);
+    }
+  }
+ 
+}
+
+let selected = false;
 function p3_drawTile(i, j) {
   noStroke();
-  let vert = [[0, th], [0, 0], [tw, 0], [tw, th]]; // Bottom left, top left, top right, bottom right
-  let vex_corn = [0,0,0,0];
-  let cave_corn = [0,0,0,0];
+  vert = [[STROKE_WEIGHT/2, th-STROKE_WEIGHT/2], 
+          [STROKE_WEIGHT/2, STROKE_WEIGHT/2], 
+          [tw-STROKE_WEIGHT/2, STROKE_WEIGHT/2], 
+          [tw-STROKE_WEIGHT/2, th-STROKE_WEIGHT/2]]; // Bottom left, top left, top right, bottom right
+  vex_corn = [0,0,0,0];
+  cave_corn = [0,0,0,0];
 
   c_type = get_type(i, j);
   //c_type = floor(noise(i, j)*100) % 3;
@@ -186,12 +322,20 @@ function p3_drawTile(i, j) {
   }
 
   // Calculate the x,y and width
-  let [x, y] = vert[1];
-  let [w, h] = [vert[2][0]- vert[1][0], vert[0][1]-vert[1][1]];
+  [x, y] = vert[1];
+  [w, h] = [vert[2][0]- vert[1][0], vert[0][1]-vert[1][1]];
 
   push();
-  noStroke();
-  fill(TYPE1_COLOR);
+  
+  let k = clicks[[i, j]] | 0;
+  selected = k % 2 == 1
+  if (selected) {
+    noStroke();
+    fill(SEL_COLORS[0]);
+  } else {
+    if (c_type == 0) stroke(TYPE1_COLOR);
+    fill(TYPE1_COLOR);
+  }
   rect(0, 0, tw+1, th+1);
 
 
@@ -211,59 +355,32 @@ function p3_drawTile(i, j) {
   //text( n_code , tw/2, th/2);
   
   if (c_type != 0){
-    fill(TYPE_COLORS[c_type]);
-    
-    stroke('green');
+    if (selected) {
+      fill(SEL_COLORS[c_type]);
+    } else {
+      fill(TYPE_COLORS[c_type]);
+
+    }
+    strokeWeight(STROKE_WEIGHT);
+    stroke(WALL_COLORS[c_type-1]);
     rect(x, y, w, h, ...vex_corn);
 
-    stroke(TYPE_COLORS[c_type]);
-    for (let n = 0; n < 4; n++){ // Cover the outline!
-      if ((n_code & 1) == 1 ){
-        rect(x+cv_border[n][0], 
-              y+cv_border[n][1], 
-              (n % 2) ? w-2 : 5, 
-              (n % 2)? 5 : h-2);
-      }
-      n_code = rightRotate(n_code, 1);
-    }
-  
-    if (cave_corn[0] == 0 && (n_code & 3) == 3){
-      noStroke();
-      fill(VACUOLE_COLOR);
-      beginShape();
-      vertex(VACUOLE_SIZE*g_offset[0].di*noise(VACUOLE_SIZE, VACUOLE_SIZE), VACUOLE_SIZE*g_offset[0].dj*noise(i, j));
-      vertex(VACUOLE_SIZE*g_offset[1].di*noise(i, VACUOLE_SIZE), VACUOLE_SIZE*g_offset[1].dj*noise(VACUOLE_SIZE, j));
-      vertex(VACUOLE_SIZE*g_offset[2].di*noise(VACUOLE_SIZE, j), VACUOLE_SIZE*g_offset[2].dj*noise(i, VACUOLE_SIZE));
-      vertex(VACUOLE_SIZE*g_offset[3].di*noise(i, j), VACUOLE_SIZE*g_offset[3].dj*noise(VACUOLE_SIZE, VACUOLE_SIZE));
-      endShape(CLOSE);
-    }
+    drawOutlineCover(i, j);
 
-    fill(TYPE_COLORS[(c_type == 1) + 1]);
-    stroke(TYPE_COLORS[c_type]);
-    for (let n = 0; n < noise(i, j)*50; n++){
-      circle(noise(i+1+n*10, j-1)*(w) + x, noise(j+n*10,i+1)*(h) + y, noise(i+n*10, j)* 10);
+    drawVacuole(i, j);
 
-    }
+    drawBubbles(i, j);
 
-    for (let n = 0; n < 4; n++){ 
-      if (cave_corn[n] > 0){ // draw the concave corners
-        //rect(corners[n].di, corners[n].dj, padding, padding, ...rad[n]);
-        
-        stroke('green');
-        fill(TYPE_COLORS[0]);
-        arc(corners[n].di, corners[n].dj, padding*2+1, padding*2+1, ...ang[n]);
-      }
-    }
+    drawConcaveCorners();
+
+    drawPilus(i, j);
+
   }
     //fill(0);
-   // text(get_bin(n_code), tw/2, th/2);
+    //text(get_bin(n_code), tw/2, th/2);
 
 
-  let n = clicks[[i, j]] | 0;
-  if (n % 2 == 1) {
-    fill(255, 255, 0, 180);
-    ellipse(th/2, tw/2, 10, 10);
-  }
+
 
   pop();
   noStroke();
@@ -281,7 +398,7 @@ function p3_drawSelectedTile(i, j) {
   endShape(CLOSE);
 
   noStroke();
-  fill(0);
+  fill(255);
   text("(" + [i, j] + ")", 0, 0);
 }
 
