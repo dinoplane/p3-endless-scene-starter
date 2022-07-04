@@ -25,7 +25,8 @@ let TYPE1_COLOR = "#251F47";
 let TYPE2_COLOR = "#FFC2F4";
 let TYPE3_COLOR = "#A9C6EF";
 let VACUOLE_COLORS = ["#78BC61", "#E9AFA3"];
-let SEL_COLORS = ["#3B3271", "#FF85E9", "#75A4E6"]
+let SEL_COLORS = ["#3B3271", "#B8003D", "#1F4F6F"]
+let SEL_WALL_COLORS = ["#FFB499", "#F8F991"]
 
 let TYPE_COLORS = [TYPE1_COLOR, TYPE2_COLOR, TYPE3_COLOR];
 let BUBBLE_COLORS = ["#00E0E0","#AA00AA"];
@@ -228,7 +229,8 @@ function drawConcaveCorners(){
   for (let n = 0; n < 4; n++){ 
     if (cave_corn[n] > 0){ // draw the concave corners
       //rect(corners[n].di, corners[n].dj, padding, padding, ...rad[n]);
-      fill(WALL_COLORS[c_type-1]);
+      if (selected) fill(SEL_WALL_COLORS[c_type-1]);
+      else fill(WALL_COLORS[c_type-1]);
       noStroke();
       let arc_v = vert[(n+1) % 4];
       arc_v[0] += g_offset[n].di * (STROKE_WEIGHT/2+1);
@@ -237,7 +239,8 @@ function drawConcaveCorners(){
       arc(...arc_v, (padding+STROKE_WEIGHT)*2+1, (padding+STROKE_WEIGHT)*2+1, ...ang[n]);
       //stroke('green');
       noStroke();
-      fill(TYPE_COLORS[0]);
+      if (selected) fill(SEL_COLORS[0])
+      else fill(TYPE_COLORS[0]);
       arc(...arc_v, (padding)*2+2, (padding)*2+2, ...ang[n]);
     }
   }
@@ -357,12 +360,13 @@ function p3_drawTile(i, j) {
   if (c_type != 0){
     if (selected) {
       fill(SEL_COLORS[c_type]);
+      stroke(SEL_WALL_COLORS[c_type-1]);
     } else {
       fill(TYPE_COLORS[c_type]);
-
+      stroke(WALL_COLORS[c_type-1]);
     }
     strokeWeight(STROKE_WEIGHT);
-    stroke(WALL_COLORS[c_type-1]);
+    
     rect(x, y, w, h, ...vex_corn);
 
     drawOutlineCover(i, j);

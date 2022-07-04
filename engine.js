@@ -31,7 +31,7 @@ function setup() {
     rebuildWorld(input.value());
   });
 
-  createP("Arrow keys scroll. Clicking changes tiles.").parent("container");
+  createP("Arrow keys scroll. Clicking stains the cell parts!").parent("container");
 
   rebuildWorld(input.value());
 }
